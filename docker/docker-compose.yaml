@@ -28,7 +28,7 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    entrypoint: python -m utils.pt2onnx --model-path assets/None-ResNet-None-CTC.pth --onnx-path assets/str.onnx
+    entrypoint: python -m utils.pt2onnx --model-path assets/None-ResNet-None-CTC.pth --onnx-path assets/str.onnx --dynamic-batching
 
   tritonserver:
     image: nvcr.io/nvidia/tritonserver:25.02-py3
@@ -52,3 +52,14 @@ services:
     stdin_open: true
     tty: true
     command: tritonserver --model-repository=/models
+
+
+  tritonserver-sdk:
+    image: nvcr.io/nvidia/tritonserver:25.02-py3-sdk
+    network_mode: host
+    runtime: nvidia
+    volumes:
+      - ../:/workspace/ # Mount current directory to /workspace
+    stdin_open: true
+    tty: true
+    command: perf_analyzer -m text_recognition -b 2 --shape input.1:1,32,100 --concurrency-range 10:16:2 --percentile=95
