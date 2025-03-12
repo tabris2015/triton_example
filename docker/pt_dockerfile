@@ -1,0 +1,4 @@
+FROM nvcr.io/nvidia/pytorch:25.02-py3
+
+ADD ./utils utils
+

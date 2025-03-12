@@ -1,0 +1,54 @@
+services:
+  tf2onnx:
+    build: 
+      context: ../
+      dockerfile: docker/tf_dockerfile
+    volumes:
+      - ../:/workspace
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    entrypoint: python -m tf2onnx.convert --input assets/frozen_east_text_detection.pb --inputs "input_images:0" --outputs "feature_fusion/Conv_7/Sigmoid:0","feature_fusion/concat_3:0" --output assets/detection.onnx
+
+  pt2onnx:
+    build:
+      context: ../
+      dockerfile: docker/pt_dockerfile
+    volumes:
+      - ../:/workspace
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    entrypoint: python -m utils.pt2onnx --model-path assets/None-ResNet-None-CTC.pth --onnx-path assets/str.onnx
+
+  tritonserver:
+    image: nvcr.io/nvidia/tritonserver:25.02-py3
+    runtime: nvidia
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+    volumes:
+      - ../:/workspace/ # Mount current directory to /workspace
+      - ../model_repo:/models  # Mount model_repository
+    shm_size: 256m # Shared memory size
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
+    stdin_open: true
+    tty: true
+    command: tritonserver --model-repository=/models
